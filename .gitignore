@@ -1,0 +1,26 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+# Generated Electron output
+/desktop-build/
+/release/
+# Local SQLite data (the sanitized installer seed stays tracked)
+/qual_e_o_filme.db
+/qual_e_o_filme.db-shm
+/qual_e_o_filme.db-wal
+/qual_e_o_filme.db-journal
+# Windows metadata
+Thumbs.db
+# Local credentials and signing keys
+.npmrc
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
