@@ -63,6 +63,9 @@ export class TikTokService extends EventEmitter {
   }
 
   public async connect(username: string): Promise<{ success: boolean; message: string }> {
+    if (typeof username !== 'string') {
+      return { success: false, message: 'Nome de usuário do TikTok é obrigatório.' };
+    }
     const cleanUser = username.replace(/^@/, '').trim();
     if (!cleanUser) {
       return { success: false, message: 'Nome de usuário do TikTok é obrigatório.' };

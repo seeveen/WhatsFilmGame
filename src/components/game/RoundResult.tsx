@@ -53,7 +53,7 @@ export const RoundResult: React.FC<RoundResultProps> = ({ gameState, unit, inter
         <header className="sp__head">
           <h2 className="sp__title">Quem acertou</h2>
           <span className="eyebrow num">
-            {winners.length} {winners.length === 1 ? 'acerto' : 'acertos'}
+            {gameState.roundCorrectCount} {gameState.roundCorrectCount === 1 ? 'acerto' : 'acertos'}
           </span>
         </header>
 

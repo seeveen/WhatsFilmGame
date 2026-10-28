@@ -138,6 +138,7 @@ export interface GameStateDTO {
   recentGifts: GiftEvent[];
   leaderboard: PlayerScore[];
   roundWinners: RoundWinner[];
+  roundCorrectCount: number;
   matchWinners: PlayerScore[];
   isPaused: boolean;
   activeMultipliersCount: number;

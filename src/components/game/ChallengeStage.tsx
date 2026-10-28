@@ -49,7 +49,7 @@ export const ChallengeStage: React.FC<ChallengeStageProps> = ({ gameState, unit 
 
   const difficulty = challenge.difficulty;
   const wordLabel = `${challenge.wordCount} ${challenge.wordCount === 1 ? 'palavra' : 'palavras'}`;
-  const correctCount = gameState.roundWinners.length;
+  const correctCount = gameState.roundCorrectCount;
 
   return (
     <section className="play" aria-label="Desafio da rodada" data-low={low || undefined}>

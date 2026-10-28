@@ -107,6 +107,15 @@ test('validateJsonImport handles standard format and reports specific errors', (
   assert.equal(res.validChallenges[1].filme, 'Frozen');
 });
 
+test('validateJsonImport replaces imported IDs and rejects oversized batches', () => {
+  const imported = validateJsonImport(JSON.stringify([{ id: 'existing-id', emoji: '🎬', filme: 'Filme novo' }]));
+  assert.notEqual(imported.validChallenges[0].id, 'existing-id');
+
+  const oversized = validateJsonImport(Array.from({ length: 5001 }, (_, i) => ({ emoji: '🎬', filme: `Filme ${i}` })));
+  assert.equal(oversized.validChallenges.length, 0);
+  assert.match(oversized.errors[0].message, /5\.000/);
+});
+
 test('multiple winners in a round earn tiered points based on rank order', () => {
   const roundWinners: Array<{ user: string; rank: number; points: number }> = [];
   const users = ['user_alpha', 'user_beta', 'user_gamma', 'user_delta'];

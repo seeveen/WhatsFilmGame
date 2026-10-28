@@ -21,6 +21,23 @@ import {
   sortLeaderboard,
 } from '../../../src/game/scoring.ts';
 
+const NUMERIC_SETTING_MAXIMUMS: Partial<Record<keyof GameSettings, number>> = {
+  roundsPerMatch: 100,
+  roundDurationSeconds: 120,
+  intermissionSeconds: 30,
+  maxVisibleLeaderboard: 100,
+  maxRecentGiftsVisible: 20,
+  giftNotificationDurationSeconds: 60,
+  likeNotificationThreshold: 10000,
+  points1st: 1000,
+  points2nd: 500,
+  points3rd: 500,
+  pointsOthers: 200,
+  roseSeconds: 300,
+  whiteRoseSeconds: 300,
+  maxAddedTimePerRound: 300,
+};
+
 export class GameEngine extends EventEmitter {
   private db: DatabaseService;
   private tiktok: TikTokService;
@@ -48,6 +65,8 @@ export class GameEngine extends EventEmitter {
   private recentGifts: GiftEvent[] = [];
   private isPaused: boolean = false;
   private matchStartTime: number = Date.now();
+  private sortedPlayersCache: PlayerScore[] | null = null;
+  private activeMultipliersCount = 0;
 
   constructor(db: DatabaseService, tiktok: TikTokService) {
     super();
@@ -74,7 +93,7 @@ export class GameEngine extends EventEmitter {
 
   // --- State Broadcasting ---
   public getSnapshot(): GameStateDTO {
-    const sortedPlayers = sortLeaderboard(Array.from(this.players.values()));
+    const sortedPlayers = this.getSortedPlayers();
 
     let maskedTitle = '';
     let letterCount = 0;
@@ -114,10 +133,11 @@ export class GameEngine extends EventEmitter {
       intermissionSeconds: this.settings.intermissionSeconds,
       recentGifts: this.recentGifts.slice(0, this.settings.maxRecentGiftsVisible),
       leaderboard: sortedPlayers.slice(0, this.settings.maxVisibleLeaderboard),
-      roundWinners: this.roundWinners,
+      roundWinners: this.roundWinners.slice(0, 3),
+      roundCorrectCount: this.roundWinners.length,
       matchWinners: sortedPlayers.slice(0, 3),
       isPaused: this.isPaused,
-      activeMultipliersCount: Array.from(this.players.values()).filter((p) => p.multiplierActive).length,
+      activeMultipliersCount: this.activeMultipliersCount,
       tiktokConnection: this.tiktok.getStatus(),
       totalChallengesAvailable: total,
       giftsConfig: this.settings.giftsConfig || DEFAULT_SETTINGS.giftsConfig,
@@ -126,6 +146,13 @@ export class GameEngine extends EventEmitter {
 
   public emitState() {
     this.emit('state', this.getSnapshot());
+  }
+
+  private getSortedPlayers(): PlayerScore[] {
+    if (!this.sortedPlayersCache) {
+      this.sortedPlayersCache = sortLeaderboard(Array.from(this.players.values()));
+    }
+    return this.sortedPlayersCache;
   }
 
   public stop() {
@@ -139,6 +166,8 @@ export class GameEngine extends EventEmitter {
     this.matchStartTime = Date.now();
     this.currentRoundNumber = 0;
     this.players.clear();
+    this.sortedPlayersCache = null;
+    this.activeMultipliersCount = 0;
     this.usedChallengeIdsInMatch.clear();
     this.isPaused = false;
     this.nextRound();
@@ -268,6 +297,7 @@ export class GameEngine extends EventEmitter {
     }
 
     // Expire remaining multipliers for round
+    this.activeMultipliersCount = 0;
     for (const player of this.players.values()) {
       player.multiplierActive = false;
     }
@@ -287,7 +317,7 @@ export class GameEngine extends EventEmitter {
   private endMatch() {
     this.clearAllTimers();
     this.status = 'match_result';
-    const sortedPlayers = sortLeaderboard(Array.from(this.players.values()));
+    const sortedPlayers = this.getSortedPlayers();
 
     // Record match to database
     this.db.recordMatch({
@@ -324,6 +354,7 @@ export class GameEngine extends EventEmitter {
         multiplierValue: 1,
       };
       this.players.set(userId, player);
+      this.sortedPlayersCache = null;
     } else if (profilePictureUrl) {
       player.avatarUrl = profilePictureUrl;
     }
@@ -357,10 +388,12 @@ export class GameEngine extends EventEmitter {
     );
 
     // Consume multiplier once used
+    if (player.multiplierActive) this.activeMultipliersCount--;
     player.multiplierActive = false;
     player.roundScore += totalPoints;
     player.matchScore += totalPoints;
     player.correctGuesses += 1;
+    this.sortedPlayersCache = null;
 
     const winnerEntry: RoundWinner = {
       rank,
@@ -471,6 +504,7 @@ export class GameEngine extends EventEmitter {
       } else if (action === 'multiplier_2x') {
         if (this.status === 'playing') {
           player = this.getOrCreatePlayer(userId, nickname, profilePictureUrl);
+          if (!player.multiplierActive) this.activeMultipliersCount++;
           player.multiplierActive = true;
           player.multiplierValue = matchedConfig.value || 2;
           effectLabel = 'pontos ×' + (matchedConfig.value || 2);
@@ -514,6 +548,7 @@ export class GameEngine extends EventEmitter {
       action = 'multiplier_2x';
       if (this.status === 'playing') {
         player = this.getOrCreatePlayer(userId, nickname, profilePictureUrl);
+        if (!player.multiplierActive) this.activeMultipliersCount++;
         player.multiplierActive = true;
         player.multiplierValue = 2;
         effectLabel = 'pontos ×2';
@@ -586,7 +621,10 @@ export class GameEngine extends EventEmitter {
       if (!Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, key)) return false;
       const defaultValue = DEFAULT_SETTINGS[key as keyof GameSettings];
       if (defaultValue === undefined || typeof value !== typeof defaultValue) return false;
-      if (typeof value === 'number' && (!Number.isInteger(value) || value < 0)) return false;
+      if (
+        typeof value === 'number' &&
+        (!Number.isSafeInteger(value) || value < 0 || value > (NUMERIC_SETTING_MAXIMUMS[key as keyof GameSettings] ?? Number.MAX_SAFE_INTEGER))
+      ) return false;
       if (typeof value === 'number' && key === 'roundDurationSeconds' && (value < 10 || value > 120)) return false;
       if (typeof value === 'number' && key === 'intermissionSeconds' && (value < 3 || value > 30)) return false;
       if (typeof value === 'number' && key === 'roundsPerMatch' && (value < 1 || value > 100)) return false;
@@ -600,8 +638,9 @@ export class GameEngine extends EventEmitter {
           !['emoji', 'image'].includes(gift.iconType) ||
           typeof gift.iconValue !== 'string' ||
           !['add_time', 'reveal_letter', 'multiplier_2x', 'custom'].includes(gift.action) ||
-          !Number.isFinite(gift.value) ||
-          gift.value < 0 ||
+          !Number.isSafeInteger(gift.value) ||
+          gift.value < 1 ||
+          gift.value > 60 ||
           typeof gift.active !== 'boolean'
         ))
       ) return false;
@@ -619,6 +658,8 @@ export class GameEngine extends EventEmitter {
 
   public resetLeaderboard() {
     this.players.clear();
+    this.sortedPlayersCache = null;
+    this.activeMultipliersCount = 0;
     this.emitState();
   }
 

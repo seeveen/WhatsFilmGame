@@ -60,6 +60,17 @@ export function validateJsonImport(
     };
   }
 
+  if (parsed.length > 5000) {
+    return {
+      isValid: false,
+      totalParsed: parsed.length,
+      validChallenges: [],
+      errors: [{ index: 0, message: 'A importação aceita no máximo 5.000 desafios por vez.' }],
+      duplicatesCount: 0,
+      duplicateTitles: [],
+    };
+  }
+
   const validChallenges: Challenge[] = [];
   const errors: ValidationError[] = [];
   const seenNormTitlesInBatch = new Set<string>();
@@ -158,9 +169,7 @@ export function validateJsonImport(
       }
     }
 
-    const id = typeof record.id === 'string' && record.id.trim()
-      ? record.id.trim()
-      : `chal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const id = `chal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     validChallenges.push({
       id,

@@ -55,3 +55,31 @@ test('manually starting another match increments its number', () => {
     engine.stop();
   }
 });
+
+test('public round state reports all correct guesses but only sends the first three winners', () => {
+  const engine = createEngine();
+  try {
+    engine.startMatch();
+    for (let i = 1; i <= 5; i++) {
+      engine.handleIncomingChat(`user-${i}`, challenge.filme, `Viewer ${i}`);
+    }
+
+    const state = engine.getSnapshot();
+    assert.equal(state.roundCorrectCount, 5);
+    assert.equal(state.roundWinners.length, 3);
+    assert.equal(state.leaderboard.length, 5);
+  } finally {
+    engine.stop();
+  }
+});
+
+test('settings reject unsafe values and zero gift effects but keep zero points valid', () => {
+  const engine = createEngine();
+  try {
+    assert.equal(engine.updateSettings({ maxAddedTimePerRound: 1e308 }), false);
+    assert.equal(engine.updateSettings({ giftsConfig: [{ ...DEFAULT_SETTINGS.giftsConfig[0], value: 0 }] }), false);
+    assert.equal(engine.updateSettings({ pointsOthers: 0 }), true);
+  } finally {
+    engine.stop();
+  }
+});

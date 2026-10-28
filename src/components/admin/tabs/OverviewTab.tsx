@@ -172,7 +172,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ gameState }) => {
         />
         <Stat
           label="Acertos na rodada"
-          value={<span className="num">{playing || gameState.status === 'round_result' ? gameState.roundWinners.length : '—'}</span>}
+          value={<span className="num">{playing || gameState.status === 'round_result' ? gameState.roundCorrectCount : '—'}</span>}
           meta={gameState.activeMultipliersCount > 0 ? `${gameState.activeMultipliersCount} multiplicador(es) ativo(s)` : undefined}
         />
         <Stat label="Biblioteca" value={<span className="num">{gameState.totalChallengesAvailable}</span>} meta="desafios cadastrados" />

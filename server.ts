@@ -37,6 +37,7 @@ const tiktok = new TikTokService();
 const engine = new GameEngine(db, tiktok);
 
 // Middleware
+app.use(['/api/challenges/validate-import', '/api/challenges/import'], express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use((req, res, next) => {
@@ -263,8 +264,16 @@ app.post('/api/game/reset-leaderboard', (_req, res) => {
 // TikTok LIVE Integration
 app.post('/api/tiktok/connect', async (req, res) => {
   const { username } = req.body;
-  const result = await tiktok.connect(username);
-  res.json(result);
+  if (typeof username !== 'string') {
+    return res.status(400).json({ success: false, message: 'Nome de usuário do TikTok é obrigatório.' });
+  }
+  try {
+    const result = await tiktok.connect(username);
+    res.json(result);
+  } catch (error) {
+    console.error('[TikTok] Failed to connect:', error);
+    res.status(500).json({ success: false, message: 'Falha ao iniciar a conexão com o TikTok.' });
+  }
 });
 
 app.post('/api/tiktok/disconnect', async (_req, res) => {
