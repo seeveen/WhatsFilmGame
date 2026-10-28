@@ -1,0 +1,105 @@
+/*
+ * ROYAL RED CINEMA — design tokens
+ * Single source of truth for color, type, radius, motion. Everything else
+ * (ui.css, stage.css, admin.css and Tailwind utilities) reads from here.
+ * See DESIGN.md for the rules that go with these values.
+ */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+
+    /* ── Brand reds ─────────────────────────────────────────── */
+    --royal: #8f102b;        /* vermelho royal profundo — assinatura, estados pressionados */
+    --brand: #c5163d;        /* vermelho principal — ações, ativos, seleção              */
+    --accent: #e5254d;       /* vermelho de destaque — só urgência / evento importante   */
+    --red-text: #f0506f;     /* vermelho p/ TEXTO pequeno sobre fundo escuro (≥5:1)      */
+    --brand-tint: rgb(197 22 61 / 0.14);   /* preenchimento sutil p/ itens ativos        */
+    --brand-tint-2: rgb(197 22 61 / 0.24);
+    --brand-line: rgb(229 37 77 / 0.45);   /* borda de itens ativos                      */
+
+    /* ── Charcoal & wine surfaces ───────────────────────────── */
+    --well: #0b090a;         /* poço: fora do palco, fundo de emojis, campos             */
+    --bg: #110f11;           /* fundo principal                                          */
+    --bg-2: #151214;         /* fundo secundário                                         */
+    --surface: #1c171a;      /* superfície principal                                     */
+    --surface-2: #21171b;    /* superfície elevada                                       */
+    --surface-3: #2a1d23;    /* hover sobre superfície elevada                           */
+    --line: #39272e;         /* borda discreta                                           */
+    --line-soft: #2b2025;    /* divisor delicado                                         */
+
+    /* ── Text ───────────────────────────────────────────────── */
+    --fg: #f7f2f4;
+    --fg-2: #b7a8ae;
+    --fg-3: #94858b;         /* base #897A81 ajustada p/ ≥5:1 em superfícies             */
+
+    /* ── Functional state ───────────────────────────────────── */
+    --ok: #4caf86;           /* verde discreto — resultado positivo                      */
+    --ok-tint: rgb(76 175 134 / 0.14);
+    --warn: #d8a24a;         /* âmbar suave — atenção                                    */
+    --warn-tint: rgb(216 162 74 / 0.14);
+
+    /* ── Type ───────────────────────────────────────────────── */
+    /* --font-sans / --font-display / --font-mono live in the @theme block below (single definition). */
+    --font-emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+
+    /* ── Shape (admin & shared). Stage derives its own radii from --u ─ */
+    --r-1: 4px;
+    --r-2: 6px;
+    --r-3: 10px;
+    --r-4: 14px;
+
+    /* ── Depth: borders first, shadows only for floating layers ─ */
+    --hairline-hi: inset 0 1px 0 rgb(255 255 255 / 0.035);
+    --shadow-pop: 0 24px 48px -20px rgb(0 0 0 / 0.75), 0 0 0 1px var(--line);
+
+    /* ── Motion ─────────────────────────────────────────────── */
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --t-fast: 120ms;
+    --t-base: 180ms;
+    --t-slow: 320ms;
+
+    --z-sticky: 20;
+    --z-overlay: 50;
+    --z-dialog: 80;
+  }
+}
+
+/* Expose the same tokens to Tailwind utilities (bg-surface, text-fg-2, font-display …) */
+@theme inline {
+  --color-royal: var(--royal);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-red-text: var(--red-text);
+  --color-well: var(--well);
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+
+  --radius-xs: var(--r-1);
+  --radius-sm: var(--r-2);
+  --radius-md: var(--r-3);
+  --radius-lg: var(--r-4);
+}
+
+/*
+ * Font families — defined ONCE, with literal values (no var() indirection, so nothing can become
+ * cyclic). Files are vendored in /public/fonts and declared in fonts.css.
+ *   Sora           → display: wordmark, headings, result titles
+ *   Inter          → interface text
+ *   JetBrains Mono → timers, scores, counters, ids (tabular figures)
+ */
+@theme static {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Sora', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}

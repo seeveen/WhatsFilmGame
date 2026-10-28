@@ -1,0 +1,69 @@
+/* Histórico */
+@layer components {
+  .hist-loading {
+    display: grid;
+    place-items: center;
+    padding: 64px 0;
+  }
+  .hist-match {
+    color: var(--fg);
+    font-weight: 700;
+  }
+  .hist-date {
+    color: var(--fg-2);
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .hist-podium {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hist-podium li {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .hist-rank {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--fg-2);
+    font: 700 11px/1 var(--font-mono);
+  }
+  .hist-rank[data-rank='1'] {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+  }
+  .hist-user {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+  }
+  .hist-pts {
+    color: var(--fg-3);
+    font-size: 12px;
+  }
+  .hist-none {
+    color: var(--fg-3);
+  }
+  .hist-qty {
+    color: var(--red-text);
+    font-weight: 700;
+  }
+  .hist-effect {
+    color: var(--red-text);
+    font-weight: 600;
+  }
+}

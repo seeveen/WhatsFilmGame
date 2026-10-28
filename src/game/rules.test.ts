@@ -4,6 +4,8 @@ import {
   normalizeAnswer,
   matchesAnswer,
   formatMaskedTitle,
+  formatSlotTitle,
+  HIDDEN_TITLE_SLOT,
   getUnrevealedLetters,
 } from './normalization.ts';
 import {
@@ -48,6 +50,10 @@ test('formatMaskedTitle masks letters properly and keeps revealed letters visibl
   assert.ok(unrevealed.includes('A'));
   assert.ok(!unrevealed.includes('O'));
   assert.ok(!unrevealed.includes('R'));
+});
+
+test('formatSlotTitle keeps the answer out of the public mask', () => {
+  assert.equal(formatSlotTitle('O Rei', new Set(['O'])), `O ${HIDDEN_TITLE_SLOT}${HIDDEN_TITLE_SLOT}${HIDDEN_TITLE_SLOT}`);
 });
 
 test('scoring rules grant correct points per rank and double points with capivara multiplier', () => {

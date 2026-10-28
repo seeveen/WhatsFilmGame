@@ -1,0 +1,41 @@
+/* Brand lockup. Sized with one custom property (--brand-fs); everything inside is em-based. */
+
+@layer components {
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+    min-width: 0;
+    color: var(--fg);
+    font-size: var(--brand-fs, 18px);
+    line-height: 1;
+  }
+  .brand__mark {
+    flex: none;
+    width: 1.85em;
+    height: 1.85em;
+  }
+  .brand__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .brand__word {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    white-space: nowrap;
+  }
+  .brand__word em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .brand__sub {
+    margin-top: 0.5em;
+    color: var(--fg-3);
+    font: 600 0.5em/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+}

@@ -1,0 +1,32 @@
+/*
+ * Fontes locais (arquivos em /public/fonts, licença SIL OFL — ver OFL-*.txt).
+ * Nada é buscado na internet: o app continua idêntico sem conexão (OBS / TikTok LIVE Studio).
+ *
+ *   Sora           → marca, títulos, nomes de resultado, letras da resposta
+ *   Inter          → texto de interface, descrições, formulários
+ *   JetBrains Mono → cronômetro, pontuações, contadores, IDs (números tabulares)
+ *
+ * Subconjunto Latin (inclui acentos do português). Caracteres fora dele (ex.: nomes de usuário em outros
+ * alfabetos) caem na fonte do sistema definida em --font-*.
+ */
+@font-face {
+  font-family: 'Sora';
+  src: url('/fonts/Sora-latin-wght.woff') format('woff');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-latin-wght.woff') format('woff');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-latin-wght.woff') format('woff');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}

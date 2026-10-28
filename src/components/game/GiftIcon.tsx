@@ -31,7 +31,7 @@ export const GiftIcon: React.FC<GiftIconProps> = ({
   giftName,
   giftId,
   giftsConfig,
-  className = 'w-6 h-6 object-contain',
+  className = '',
   fallbackEmoji = '🎁',
 }) => {
   // If giftsConfig is provided, lookup the canonical gift settings first
@@ -92,7 +92,7 @@ export const GiftIcon: React.FC<GiftIconProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center justify-center select-none ${className}`}
+      className={`gift-glyph ${className}`}
       role="img"
       aria-label={giftName || 'Presente'}
     >

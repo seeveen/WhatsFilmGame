@@ -77,6 +77,24 @@ export function formatMaskedTitle(title: string, revealedLetters: Set<string>): 
   }).join('   '); // 3 spaces between words
 }
 
+/** Marker de lacuna usado no estado público sem transportar a resposta original. */
+export const HIDDEN_TITLE_SLOT = '\uE000';
+
+/** Máscara com o mesmo número de caracteres, mas sem revelar letras ainda ocultas. */
+export function formatSlotTitle(title: string, revealedLetters: Set<string>): string {
+  const revealed = new Set<string>();
+  for (const letter of revealedLetters) {
+    revealed.add(letter.toUpperCase());
+    revealed.add(letter.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase());
+  }
+
+  return Array.from(title, (char) => {
+    if (!/^\p{L}$/u.test(char)) return char;
+    const normalized = char.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    return revealed.has(char.toUpperCase()) || revealed.has(normalized) ? char : HIDDEN_TITLE_SLOT;
+  }).join('');
+}
+
 /**
  * Returns a list of unique letters that have NOT yet been revealed.
  */

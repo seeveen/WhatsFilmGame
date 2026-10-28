@@ -11,7 +11,7 @@ import {
 import { DatabaseService } from '../database/db.ts';
 import { TikTokService } from '../integrations/tiktok.ts';
 import {
-  formatMaskedTitle,
+  formatSlotTitle,
   getUnrevealedLetters,
   matchesAnswer,
 } from '../../../src/game/normalization.ts';
@@ -27,6 +27,8 @@ export class GameEngine extends EventEmitter {
 
   private status: GameStatus = 'idle';
   private matchNumber: number = 1;
+  private hasStartedMatch = false;
+  private pendingMatchIncrement = false;
   private currentRoundNumber: number = 0;
   private currentChallenge: Challenge | null = null;
   private revealedLetters = new Set<string>();
@@ -79,7 +81,7 @@ export class GameEngine extends EventEmitter {
     let wordCount = 0;
 
     if (this.currentChallenge) {
-      maskedTitle = formatMaskedTitle(this.currentChallenge.filme, this.revealedLetters);
+      maskedTitle = formatSlotTitle(this.currentChallenge.filme, this.revealedLetters);
       // Count visible characters, including punctuation, while excluding spaces between words.
       letterCount = Array.from(this.currentChallenge.filme).filter((c) => !/\s/u.test(c)).length;
       wordCount = this.currentChallenge.filme.trim().split(/\s+/).length;
@@ -96,7 +98,6 @@ export class GameEngine extends EventEmitter {
         ? {
             id: this.currentChallenge.id,
             emoji: this.currentChallenge.emoji,
-            filme: this.currentChallenge.filme,
             maskedTitle,
             letterCount,
             wordCount,
@@ -105,7 +106,9 @@ export class GameEngine extends EventEmitter {
             revealedLetters: Array.from(this.revealedLetters),
           }
         : null,
-      revealedAnswer: this.revealedAnswer,
+      revealedAnswer: ['round_result', 'intermission', 'match_result'].includes(this.status)
+        ? this.revealedAnswer
+        : null,
       timeRemainingSeconds: this.timeRemainingSeconds,
       roundDurationSeconds: this.settings.roundDurationSeconds,
       intermissionSeconds: this.settings.intermissionSeconds,
@@ -132,6 +135,7 @@ export class GameEngine extends EventEmitter {
   // --- Game Lifecycle Controls ---
   public startMatch() {
     this.clearAllTimers();
+    this.pendingMatchIncrement = this.hasStartedMatch;
     this.matchStartTime = Date.now();
     this.currentRoundNumber = 0;
     this.players.clear();
@@ -188,11 +192,15 @@ export class GameEngine extends EventEmitter {
     this.currentChallenge = this.selectChallenge();
 
     if (!this.currentChallenge) {
+      this.pendingMatchIncrement = false;
       this.status = 'error';
       this.emitState();
       return;
     }
 
+    if (this.pendingMatchIncrement) this.matchNumber++;
+    this.pendingMatchIncrement = false;
+    this.hasStartedMatch = true;
     this.usedChallengeIdsInMatch.add(this.currentChallenge.id);
     this.status = 'playing';
     this.emitState();
@@ -296,7 +304,6 @@ export class GameEngine extends EventEmitter {
     // Auto-loop new match if enabled
     if (this.settings.autoLoopMatches) {
       this.intermissionTimeout = setTimeout(() => {
-        this.matchNumber++;
         this.startMatch();
       }, 10000); // 10s celebration screen before looping
     }
@@ -309,7 +316,7 @@ export class GameEngine extends EventEmitter {
       player = {
         id: userId,
         username: nickname || userId,
-        avatarUrl: profilePictureUrl || 'https://api.dicebear.com/7.x/thumbs/svg?seed=' + encodeURIComponent(userId || nickname || 'player') + '&backgroundColor=0e0e10,1b1b1f',
+        avatarUrl: profilePictureUrl,
         matchScore: 0,
         roundScore: 0,
         correctGuesses: 0,
@@ -367,8 +374,6 @@ export class GameEngine extends EventEmitter {
 
     this.emit('correct_guess', {
       winner: winnerEntry,
-      player,
-      challenge: this.currentChallenge,
     });
 
     this.emitState();
@@ -582,9 +587,10 @@ export class GameEngine extends EventEmitter {
       const defaultValue = DEFAULT_SETTINGS[key as keyof GameSettings];
       if (defaultValue === undefined || typeof value !== typeof defaultValue) return false;
       if (typeof value === 'number' && (!Number.isInteger(value) || value < 0)) return false;
-      if (key === 'roundDurationSeconds' && (value < 10 || value > 120)) return false;
-      if (key === 'intermissionSeconds' && (value < 3 || value > 30)) return false;
-      if (key === 'roundsPerMatch' && (value < 1 || value > 100)) return false;
+      if (typeof value === 'number' && key === 'roundDurationSeconds' && (value < 10 || value > 120)) return false;
+      if (typeof value === 'number' && key === 'intermissionSeconds' && (value < 3 || value > 30)) return false;
+      if (typeof value === 'number' && key === 'roundsPerMatch' && (value < 1 || value > 100)) return false;
+      if (typeof value === 'number' && key === 'likeNotificationThreshold' && (value < 1 || value > 10000)) return false;
       if (
         key === 'giftsConfig' &&
         (!Array.isArray(value) || value.some((gift: any) =>

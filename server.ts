@@ -50,12 +50,72 @@ engine.on('state', (state) => {
 });
 
 engine.on('correct_guess', (data) => {
-  io.emit('game:correct_guess', data);
+  io.emit('game:correct_guess', { winner: data.winner });
+  io.emit('game:notification', {
+    id: 'correct_' + Date.now(),
+    type: 'correct',
+    username: data.winner.username,
+    points: data.winner.points,
+    multiplierApplied: data.winner.multiplierApplied,
+    timestamp: data.winner.awardedAt,
+  });
 });
 
 engine.on('gift_received', (data) => {
   io.emit('game:gift_received', data);
+  io.emit('game:notification', {
+    id: data.id,
+    type: 'gift',
+    username: data.username,
+    giftName: data.giftName,
+    giftId: data.giftId,
+    giftIcon: data.giftIcon,
+    giftIconType: data.giftIconType,
+    amount: data.amount,
+    effectLabel: data.effectLabel,
+    timestamp: data.timestamp,
+  });
 });
+
+const likesByViewer = new Map<string, { count: number; notifiedAt: number }>();
+tiktok.on('status_change', (status) => {
+  if (status.status === 'connecting' || status.status === 'disconnected') likesByViewer.clear();
+});
+
+tiktok.on('like', (data) => {
+  const key = String(data.uniqueId || data.nickname).toLowerCase();
+  const likes = likesByViewer.get(key) || { count: 0, notifiedAt: 0 };
+  likes.count += Math.max(1, Math.floor(data.likeCount || 1));
+  const threshold = engine.getSettings().likeNotificationThreshold || 10;
+
+  if (likes.count - likes.notifiedAt >= threshold) {
+    likes.notifiedAt = likes.count;
+    io.emit('game:notification', {
+      id: 'likes_' + key + '_' + likes.count,
+      type: 'likes',
+      username: data.nickname,
+      count: likes.count,
+      timestamp: data.timestamp,
+    });
+  }
+
+  if (!likesByViewer.has(key) && likesByViewer.size >= 1000) {
+    const oldest = likesByViewer.keys().next();
+    if (!oldest.done) likesByViewer.delete(oldest.value);
+  }
+  likesByViewer.set(key, likes);
+});
+
+for (const eventName of ['follow', 'share'] as const) {
+  tiktok.on(eventName, (data) => {
+    io.emit('game:notification', {
+      id: eventName + '_' + data.uniqueId + '_' + data.timestamp,
+      type: eventName,
+      username: data.nickname,
+      timestamp: data.timestamp,
+    });
+  });
+}
 
 tiktok.on('log', (msg) => {
   io.emit('tiktok:log', { message: msg, timestamp: Date.now() });

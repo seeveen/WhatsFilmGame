@@ -82,6 +82,7 @@ export interface GameSettings {
   maxVisibleLeaderboard: number;
   maxRecentGiftsVisible: number;
   giftNotificationDurationSeconds: number;
+  likeNotificationThreshold: number;
   points1st: number;
   points2nd: number;
   points3rd: number;
@@ -94,6 +95,27 @@ export interface GameSettings {
   giftsConfig: GiftConfig[];
 }
 
+export interface LiveNotification {
+  id: string;
+  type: 'correct' | 'gift' | 'likes' | 'follow' | 'share';
+  username: string;
+  timestamp: number;
+  points?: number;
+  multiplierApplied?: boolean;
+  giftName?: string;
+  giftId?: string | number;
+  giftIcon?: string;
+  giftIconType?: 'emoji' | 'image';
+  amount?: number;
+  effectLabel?: string;
+  count?: number;
+}
+
+export interface TikTokLogLine {
+  message: string;
+  timestamp: number;
+}
+
 export interface GameStateDTO {
   status: GameStatus;
   matchNumber: number;
@@ -102,7 +124,6 @@ export interface GameStateDTO {
   currentChallenge: {
     id: string;
     emoji: string;
-    filme: string;
     maskedTitle: string;
     letterCount: number;
     wordCount: number;

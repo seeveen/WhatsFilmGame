@@ -1,147 +1,21 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    color-scheme: dark;
-    --bg-main: #110F11;
-    --bg-deep: #151214;
-    --bg-card: #1C171A;
-    --bg-elevated: #21171B;
-    --border: #39272E;
-    --border-strong: #50363F;
-    --accent-deep: #8F102B;
-    --accent: #C5163D;
-    --accent-bright: #E5254D;
-    --text-primary: #F7F2F4;
-    --text-muted: #B7A8AE;
-    --text-dim: #897A81;
-  }
-
-  html, body, #root { min-height: 100%; }
-
-  body {
-    background-color: var(--bg-main);
-    color: var(--text-primary);
-    font-family: 'Inter', system-ui, sans-serif;
-    overflow-x: hidden;
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  button, input, select, textarea { font: inherit; }
-  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-    outline: 2px solid var(--accent-bright);
-    outline-offset: 2px;
-  }
-}
-
-.app-drag-region {
-  -webkit-app-region: drag;
-}
-
-.app-drag-region button {
-  -webkit-app-region: no-drag;
-}
-
-.gift-scroll-mask {
-  overflow: hidden;
-  mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 92%, transparent 100%);
-}
-
-.gift-push-progress {
-  animation-name: gift-push-progress;
-  animation-timing-function: linear;
-  animation-fill-mode: forwards;
-}
-
-.gift-scroll-track {
-  display: flex;
-  flex-direction: column;
-  animation: gift-scroll 28s linear infinite;
-  will-change: transform;
-}
-
-.gift-scroll-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 8px;
-}
-
-.gift-scroll-mask:hover .gift-scroll-track {
-  animation-play-state: paused;
-}
-
-@media (max-width: 400px) {
-  .game-round-label {
-    display: none;
-  }
-}
-
-@keyframes gift-push-progress {
-  from { width: 100%; }
-  to { width: 0; }
-}
-
-@keyframes gift-scroll {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .gift-scroll-track {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}
-
-.font-d, .font-display {
-  font-family: 'Sora', 'Inter', sans-serif;
-}
-
-.font-body {
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-.font-mono-num {
-  font-family: 'JetBrains Mono', monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Template styles */
-.lbl-style {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #B7A8AE;
-}
-
-/* Custom scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #151214;
-}
-::-webkit-scrollbar-thumb {
-  background: #39272E;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #C5163D;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+/*
+ * Royal Red Cinema — ordem importa: fontes → tokens → base → motivos → componentes → telas.
+ * Todo valor visual vem de tokens.css; as telas só compõem.
+ */
+@import "./styles/fonts.css";
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/brand.css";
+@import "./styles/cinema.css";
+@import "./styles/ui.css";
+@import "./styles/game.css";
+@import "./styles/game-results.css";
+@import "./styles/admin/shell.css";
+@import "./styles/admin/overview.css";
+@import "./styles/admin/library.css";
+@import "./styles/admin/gifts.css";
+@import "./styles/admin/mechanics.css";
+@import "./styles/admin/tiktok.css";
+@import "./styles/admin/history.css";

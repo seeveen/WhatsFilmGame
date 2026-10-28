@@ -1,28 +1,35 @@
 import React, { useState } from 'react';
-import {
-  Play,
-  Pause,
-  SkipForward,
-  RotateCcw,
-  Film,
-  Radio,
-  Clock,
-  Send,
-  Gift,
-  Zap,
-} from 'lucide-react';
+import { Eye, Film, Pause, Play, RotateCcw, Send, SkipForward } from 'lucide-react';
 import { GameStateDTO } from '../../../../shared/types.ts';
+import {
+  Button,
+  Chip,
+  DifficultyMeter,
+  EmptyState,
+  Field,
+  PageHeader,
+  Section,
+  Stat,
+  StatStrip,
+  TextInput,
+  useFeedback,
+} from '../../ui/index.ts';
+import { GiftIcon, getCleanGiftName } from '../../game/GiftIcon.tsx';
+import { describeGameStatus } from '../game-status.ts';
+import { describeGiftEffect } from '../../../game/events.ts';
+import { buildSlotModel, countSlots } from '../../../game/slots.ts';
+import { formatClock, pad2 } from '../../../utils/format.ts';
 
 interface OverviewTabProps {
   gameState: GameStateDTO;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ gameState }) => {
+  const { toast, confirm } = useFeedback();
   const [simUser, setSimUser] = useState('marcos_live');
   const [simMessage, setSimMessage] = useState('');
-  const [statusMsg, setStatusMsg] = useState('');
 
-  const handleAction = async (endpoint: string, body?: any) => {
+  const handleAction = async (endpoint: string, body?: any, okMessage = 'Ação executada.') => {
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -31,310 +38,257 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ gameState }) => {
       });
       const data = await res.json();
       if (data.success) {
-        setStatusMsg('Ação executada com sucesso!');
-        setTimeout(() => setStatusMsg(''), 3000);
+        toast('success', okMessage);
+      } else {
+        toast('error', data.error || data.message || 'O servidor não concluiu a ação.');
       }
     } catch (e: any) {
-      setStatusMsg(`Erro: ${e.message}`);
+      toast('error', e.message, 'Erro');
     }
+  };
+
+  const matchInProgress = gameState.status === 'playing' || gameState.status === 'round_result' || gameState.status === 'intermission';
+
+  const handleStart = async () => {
+    if (matchInProgress) {
+      const ok = await confirm({
+        title: 'Iniciar uma nova partida?',
+        message: 'Há uma partida em andamento. Iniciar agora descarta a rodada atual e zera o placar.',
+        confirmLabel: 'Iniciar nova partida',
+        tone: 'primary',
+      });
+      if (!ok) return;
+    }
+    await handleAction('/api/game/start', undefined, 'Nova partida iniciada.');
+  };
+
+  const handleResetLeaderboard = async () => {
+    const ok = await confirm({
+      title: 'Zerar o placar?',
+      message: 'Zera apenas as pontuações da partida. A biblioteca de desafios não é afetada.',
+      confirmLabel: 'Zerar placar',
+    });
+    if (ok) await handleAction('/api/game/reset-leaderboard', undefined, 'Placar zerado.');
   };
 
   const handleSendChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!simMessage.trim()) return;
-    await handleAction('/api/tiktok/simulate-chat', {
-      username: simUser,
-      comment: simMessage.trim(),
-    });
+    await handleAction(
+      '/api/tiktok/simulate-chat',
+      { username: simUser, comment: simMessage.trim() },
+      `Palpite enviado como @${simUser}.`
+    );
     setSimMessage('');
   };
 
   const handleSendGift = async (gift: any) => {
-    await handleAction('/api/tiktok/simulate-gift', {
-      username: simUser,
-      giftName: gift.name,
-      giftId: gift.id,
-      repeatCount: 1,
-    });
+    await handleAction(
+      '/api/tiktok/simulate-gift',
+      { username: simUser, giftName: gift.name, giftId: gift.id, repeatCount: 1 },
+      `${getCleanGiftName(gift.name, gift.iconType === 'image')} enviado como @${simUser}.`
+    );
   };
 
   const giftsConfig = gameState.giftsConfig || [];
+  const challenge = gameState.currentChallenge;
+  const status = describeGameStatus(gameState);
+  const slots = challenge ? buildSlotModel(challenge.maskedTitle, challenge.revealedLetters) : [];
+  const counts = countSlots(slots);
+  const playing = gameState.status === 'playing';
 
   return (
-    <div className="space-y-6 text-[#F7F2F4]">
-      {/* Top Banner Status Notification */}
-      {statusMsg && (
-        <div className="px-4 py-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs font-semibold text-emerald-400 animate-in fade-in">
-          {statusMsg}
-        </div>
-      )}
+    <div className="page">
+      <PageHeader
+        eyebrow="Partida"
+        title="Visão geral"
+        description="Controle a partida em andamento e acompanhe o desafio atual."
+      />
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Estado do Jogo */}
-        <div className="p-5 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-lg">
-          <span className="text-[11px] font-semibold text-[#B7A8AE] uppercase tracking-[0.14em] block mb-1.5">
-            ESTADO DA PARTIDA
-          </span>
-          <div className="flex items-center justify-between">
-            <span className="text-xl font-extrabold font-display text-white uppercase">
-              {gameState.status === 'playing'
-                ? 'Em Jogo'
-                : gameState.status === 'round_result'
-                ? 'Resultado'
-                : gameState.status === 'match_result'
-                ? 'Finalizada'
-                : 'Aguardando'}
-            </span>
-            <span
-              className={`w-3 h-3 rounded-full ${
-                gameState.status === 'playing'
-                  ? 'bg-emerald-400 animate-pulse'
-                  : 'bg-amber-400'
-              }`}
-            />
-          </div>
-          <span className="text-xs text-zinc-500 mt-2 block font-medium">
-            Partida #{String(gameState.matchNumber).padStart(2, '0')}
-          </span>
-        </div>
-
-        {/* Metric 2: Round & Tempo */}
-        <div className="p-5 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-lg">
-          <span className="text-[11px] font-semibold text-[#B7A8AE] uppercase tracking-[0.14em] block mb-1.5">
-            ROUND ATUAL
-          </span>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-extrabold font-display text-[#C5163D]">
-              {String(gameState.currentRound).padStart(2, '0')}/
-              {String(gameState.totalRounds).padStart(2, '0')}
-            </span>
-            <div className="flex items-center gap-1.5 text-xs text-white font-mono-num bg-[#21171B] px-2.5 py-1 rounded-md border border-[#39272E]">
-              <Clock className="w-3.5 h-3.5 text-[#C5163D]" />
-              {gameState.timeRemainingSeconds}s
-            </div>
-          </div>
-          <span className="text-xs text-zinc-500 mt-2 block font-medium">
-            {gameState.isPaused ? 'Pausado' : 'Temporizador rodando'}
-          </span>
-        </div>
-
-        {/* Metric 3: Desafios no Banco */}
-        <div className="p-5 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-lg">
-          <span className="text-[11px] font-semibold text-[#B7A8AE] uppercase tracking-[0.14em] block mb-1.5">
-            BIBLIOTECA ATIVA
-          </span>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-extrabold font-display text-white">
-              {gameState.totalChallengesAvailable}
-            </span>
-            <Film className="w-5 h-5 text-zinc-500" />
-          </div>
-          <span className="text-xs text-zinc-500 mt-2 block font-medium">
-            Filmes cadastrados no SQLite
-          </span>
-        </div>
-
-        {/* Metric 4: Conexão TikTok LIVE */}
-        <div className="p-5 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-lg">
-          <span className="text-[11px] font-semibold text-[#B7A8AE] uppercase tracking-[0.14em] block mb-1.5">
-            CONEXÃO TIKTOK
-          </span>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-white truncate max-w-[130px]">
-              {gameState.tiktokConnection.username
-                ? `@${gameState.tiktokConnection.username}`
-                : 'Não conectado'}
-            </span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                gameState.tiktokConnection.status === 'connected'
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-zinc-800 text-zinc-400'
-              }`}
-            >
-              {gameState.tiktokConnection.status}
+      {/* Controles + números da partida */}
+      <section className="ov-control" aria-label="Controles da partida">
+        <div className="ov-control__bar">
+          <div className="ov-control__who">
+            <span className="eyebrow">Partida {pad2(gameState.matchNumber)}</span>
+            <span className="ov-control__state font-display">
+              <i className={`dot dot--${status.dot === 'idle' ? '' : status.dot}`} aria-hidden="true" />
+              {status.label}
             </span>
           </div>
-          <span className="text-xs text-zinc-500 mt-2 block font-medium">
-            {gameState.tiktokConnection.viewerCount !== undefined
-              ? `${gameState.tiktokConnection.viewerCount} espectadores`
-              : 'Conector ttlc'}
-          </span>
+          <div className="ov-control__actions">
+            <Button variant={matchInProgress ? 'secondary' : 'primary'} icon={<Play />} onClick={handleStart}>
+              Iniciar partida
+            </Button>
+            {gameState.isPaused ? (
+              <Button variant="primary" icon={<Play />} onClick={() => handleAction('/api/game/resume', undefined, 'Partida retomada.')}>
+                Retomar
+              </Button>
+            ) : (
+              <Button icon={<Pause />} onClick={() => handleAction('/api/game/pause', undefined, 'Partida pausada.')}>
+                Pausar
+              </Button>
+            )}
+            <Button icon={<SkipForward />} onClick={() => handleAction('/api/game/skip', undefined, 'Rodada pulada.')}>
+              Pular rodada
+            </Button>
+            <Button variant="danger" icon={<RotateCcw />} onClick={handleResetLeaderboard} title="Zera apenas as pontuações da partida, sem apagar a biblioteca">
+              Zerar placar
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Control Actions Row */}
-      <div className="p-6 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-xl flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base font-extrabold text-white font-display">Controles da Partida</h2>
-          <p className="text-xs text-[#B7A8AE] mt-0.5">
-            Inicie novas partidas, pause o fluxo automático ou avance rounds
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => handleAction('/api/game/start')}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#C5163D] hover:bg-[#E5254D] text-white text-xs font-bold transition-all shadow-lg shadow-[#C5163D]/25 cursor-pointer"
+        {gameState.totalRounds > 0 && matchInProgress && (
+          <div
+            className="ov-rounds"
+            role="progressbar"
+            aria-label="Progresso da partida"
+            aria-valuemin={0}
+            aria-valuemax={gameState.totalRounds}
+            aria-valuenow={gameState.currentRound}
           >
-            <Play className="w-4 h-4 fill-current" />
-            Iniciar Partida
-          </button>
-
-          {gameState.isPaused ? (
-            <button
-              onClick={() => handleAction('/api/game/resume')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all cursor-pointer"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              Retomar
-            </button>
-          ) : (
-            <button
-              onClick={() => handleAction('/api/game/pause')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#21171B] hover:bg-white/10 border border-[#39272E] text-white text-xs font-bold transition-all cursor-pointer"
-            >
-              <Pause className="w-4 h-4" />
-              Pausar
-            </button>
-          )}
-
-          <button
-            onClick={() => handleAction('/api/game/skip')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#21171B] hover:bg-white/10 border border-[#39272E] text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
-          >
-            <SkipForward className="w-4 h-4" />
-            Pular Round
-          </button>
-
-          <button
-            onClick={() => handleAction('/api/game/reset-leaderboard')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#21171B] hover:bg-white/10 border border-[#39272E] text-zinc-400 hover:text-[#E5254D] text-xs font-semibold transition-all cursor-pointer"
-            title="Zera apenas as pontuações da partida sem apagar biblioteca"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Zerar Placar
-          </button>
-        </div>
-      </div>
-
-      {/* Current Round Details & Quick Simulator */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Current Active Challenge Preview */}
-        <div className="p-6 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#39272E] pb-3">
-            <h3 className="text-sm font-extrabold text-white font-display flex items-center gap-2">
-              <Film className="w-4 h-4 text-[#C5163D]" />
-              Desafio Ativo no Momento
-            </h3>
-            <span className="text-xs text-zinc-500">Visualização Admin</span>
+            {Array.from({ length: Math.min(gameState.totalRounds, 50) }, (_, i) => {
+              const n = i + 1;
+              return <i key={n} className={n < gameState.currentRound ? 'done' : n === gameState.currentRound ? 'now' : ''} />;
+            })}
           </div>
+        )}
+      </section>
 
-          {gameState.currentChallenge ? (
-            <div className="space-y-3">
-              <div className="p-5 rounded-lg bg-[#110F11] border border-[#39272E] text-center shadow-inner">
-                <span className="text-5xl select-none block mb-2">
-                  {gameState.currentChallenge.emoji}
-                </span>
-                <p className="font-mono-num text-lg font-extrabold tracking-widest text-zinc-300">
-                  {gameState.currentChallenge.maskedTitle}
-                </p>
-              </div>
+      <StatStrip>
+        <Stat
+          label="Rodada"
+          value={
+            <span className="num">
+              {pad2(gameState.currentRound)}
+              <span className="ov-of">/{pad2(gameState.totalRounds)}</span>
+            </span>
+          }
+          meta={playing ? (gameState.isPaused ? 'Pausada' : 'Em andamento') : status.label}
+        />
+        <Stat
+          label="Tempo"
+          value={<span className="num">{playing ? formatClock(gameState.timeRemainingSeconds) : '—'}</span>}
+          meta={playing ? `de ${formatClock(gameState.roundDurationSeconds)} por rodada` : `${formatClock(gameState.roundDurationSeconds)} por rodada`}
+        />
+        <Stat
+          label="Acertos na rodada"
+          value={<span className="num">{playing || gameState.status === 'round_result' ? gameState.roundWinners.length : '—'}</span>}
+          meta={gameState.activeMultipliersCount > 0 ? `${gameState.activeMultipliersCount} multiplicador(es) ativo(s)` : undefined}
+        />
+        <Stat label="Biblioteca" value={<span className="num">{gameState.totalChallengesAvailable}</span>} meta="desafios cadastrados" />
+      </StatStrip>
 
-              <div className="p-4 rounded-lg bg-[#21171B] border border-[#39272E] space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-[#B7A8AE]">Resposta oficial:</span>
-                  <span className="font-bold text-emerald-400 text-sm">
-                    {gameState.revealedAnswer || gameState.currentChallenge.filme}
-                  </span>
+      <div className="ov-columns">
+        {/* Desafio atual */}
+        <Section
+          title="Desafio atual"
+          actions={
+            <Chip icon={<Eye />} title="A resposta fica oculta durante a rodada e aparece depois que ela termina">
+              Só no painel
+            </Chip>
+          }
+        >
+          {challenge ? (
+            <div className="ov-challenge">
+              <div className="ov-challenge__well frame">
+                <div className="ov-challenge__emoji emoji" aria-label="Pista em emojis">
+                  {challenge.emoji}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#B7A8AE]">Categoria:</span>
-                  <span className="text-white font-semibold">
-                    {gameState.currentChallenge.category || 'Geral'}
-                  </span>
+                <div className="slots__flow ov-challenge__slots" style={{ fontSize: 22 }} aria-hidden="true">
+                  {slots.map((word, wi) => (
+                    <span key={wi} className="slots__word">
+                      {word.map((slot, ci) => (
+                        <span key={ci} className={`slot slot--${slot.kind}`}>
+                          {slot.kind === 'revealed' ? slot.char : slot.kind === 'punct' ? slot.char : ''}
+                        </span>
+                      ))}
+                    </span>
+                  ))}
                 </div>
               </div>
+              <dl className="ov-facts">
+                <div>
+                  <dt>Resposta</dt>
+                  <dd className="ov-facts__answer font-display">
+                    {gameState.revealedAnswer || (playing ? 'Oculta durante a rodada' : 'Resposta indisponível')}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Categoria</dt>
+                  <dd>{challenge.category || 'Geral'}</dd>
+                </div>
+                <div>
+                  <dt>Dificuldade</dt>
+                  <dd>
+                    <DifficultyMeter level={challenge.difficulty} />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Letras</dt>
+                  <dd className="num">
+                    {counts.revealed} reveladas de {counts.total}
+                  </dd>
+                </div>
+              </dl>
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-zinc-500">
-              Nenhum desafio em andamento. Clique em "Iniciar Partida".
-            </div>
+            <EmptyState
+              icon={<Film />}
+              title="Nenhum desafio em andamento"
+              description="Clique em “Iniciar partida” para sortear o primeiro desafio."
+            />
           )}
-        </div>
+        </Section>
 
-        {/* Right: Real-time Live Simulator (Chat & Gifts) */}
-        <div className="p-6 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#39272E] pb-3">
-            <h3 className="text-sm font-extrabold text-white font-display flex items-center gap-2">
-              <Radio className="w-4 h-4 text-[#C5163D]" />
-              Simulador de Teste (Chat & Presentes)
-            </h3>
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#C5163D]/20 text-[#E5254D] font-bold">
-              Modo Teste
-            </span>
-          </div>
+        {/* Simulador */}
+        <Section
+          title="Simulador de teste"
+          description="Envie palpites e presentes como se viessem da LIVE para conferir pontuação, lacunas e avisos."
+          actions={<Chip tone="warn">Modo teste</Chip>}
+        >
+          <div className="ov-sim">
+            <Field label="Usuário simulado" htmlFor="ov-sim-user">
+              <TextInput id="ov-sim-user" value={simUser} onChange={(e) => setSimUser(e.target.value)} placeholder="ex.: pedro_live" autoComplete="off" />
+            </Field>
 
-          <p className="text-xs text-[#B7A8AE]">
-            Teste palpites e envio de presentes em tempo real para verificar a pontuação, slots de letras e notificações.
-          </p>
+            <form className="ov-sim__chat" onSubmit={handleSendChat}>
+              <Field label="Palpite no chat" htmlFor="ov-sim-guess" className="ov-sim__guess">
+                <TextInput id="ov-sim-guess" value={simMessage} onChange={(e) => setSimMessage(e.target.value)} placeholder="Digite o nome do filme…" autoComplete="off" />
+              </Field>
+              <Button type="submit" icon={<Send />} disabled={!simMessage.trim()}>
+                Enviar
+              </Button>
+            </form>
 
-          {/* User selector input */}
-          <div className="flex items-center gap-2.5 text-xs">
-            <span className="text-[#B7A8AE] shrink-0 font-semibold">Usuário simulado:</span>
-            <input
-              type="text"
-              value={simUser}
-              onChange={(e) => setSimUser(e.target.value)}
-              className="flex-1 px-3.5 py-2 rounded-md bg-[#110F11] border border-[#39272E] text-white text-xs focus:outline-none focus:border-[#C5163D]"
-              placeholder="ex: pedro_live"
-            />
-          </div>
-
-          {/* Chat Form */}
-          <form onSubmit={handleSendChat} className="flex gap-2">
-            <input
-              type="text"
-              value={simMessage}
-              onChange={(e) => setSimMessage(e.target.value)}
-              placeholder="Digite o palpite do filme..."
-              className="flex-1 px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-xs text-white focus:outline-none focus:border-[#C5163D]"
-            />
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-md bg-[#C5163D] hover:bg-[#E5254D] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#C5163D]/20"
-            >
-              <Send className="w-3.5 h-3.5" />
-              Enviar
-            </button>
-          </form>
-
-          {/* Quick Gift Trigger Buttons */}
-          <div className="pt-2 border-t border-[#39272E]">
-            <span className="text-[11px] font-semibold text-[#B7A8AE] block mb-2">
-              Disparar Presentes Cadastrados:
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {giftsConfig.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => handleSendGift(g)}
-                  className="px-2.5 py-2 rounded-md bg-[#21171B] hover:bg-white/10 border border-[#39272E] text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer truncate"
-                  title={`Testar presente ${g.name}`}
-                >
-                  {g.iconType === 'image' && g.iconValue ? (
-                    <img src={g.iconValue} alt="" className="w-4 h-4 object-contain" />
-                  ) : (
-                    <span>{g.iconValue || '🎁'}</span>
-                  )}
-                  <span className="truncate">{g.name}</span>
-                </button>
-              ))}
+            <div className="ov-sim__gifts">
+              <span className="field__label">Presentes cadastrados</span>
+              {giftsConfig.length === 0 ? (
+                <span className="field__hint">Nenhum presente cadastrado. Configure em “Presentes”.</span>
+              ) : (
+                <ul className="ov-gifts">
+                  {giftsConfig.map((gift) => (
+                    <li key={gift.id}>
+                      <button
+                        type="button"
+                        className={`ov-gift ${gift.active ? '' : 'is-off'}`}
+                        onClick={() => handleSendGift(gift)}
+                        title={`Testar presente ${gift.name}`}
+                      >
+                        <span className="ov-gift__ico">
+                          <GiftIcon gift={gift} className="ov-gift__img" fallbackEmoji="🎁" />
+                        </span>
+                        <span className="ov-gift__txt">
+                          <span className="ov-gift__name">{getCleanGiftName(gift.name, gift.iconType === 'image')}</span>
+                          <span className="ov-gift__fx">{gift.active ? describeGiftEffect(gift) : 'Inativo'}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
-        </div>
+        </Section>
       </div>
     </div>
   );

@@ -19,6 +19,19 @@ export interface TikTokGiftPayload {
   timestamp: number;
 }
 
+export interface TikTokLikePayload {
+  uniqueId: string;
+  nickname: string;
+  likeCount: number;
+  timestamp: number;
+}
+
+export interface TikTokSocialPayload {
+  uniqueId: string;
+  nickname: string;
+  timestamp: number;
+}
+
 export class TikTokService extends EventEmitter {
   private connector: any = null;
   private currentUsername: string = '';
@@ -130,6 +143,29 @@ export class TikTokService extends EventEmitter {
         };
         this.emit('gift', payload);
       });
+
+      this.connector.on('like', (data: any) => {
+        const user = data.user;
+        const payload: TikTokLikePayload = {
+          uniqueId: String(user?.uniqueId || user?.userId || user?.nickname || 'espectador'),
+          nickname: user?.nickname || user?.uniqueId || 'Espectador',
+          likeCount: Math.max(1, Number(data.likeCount) || 1),
+          timestamp: Date.now(),
+        };
+        this.emit('like', payload);
+      });
+
+      for (const eventName of ['follow', 'share'] as const) {
+        this.connector.on(eventName, (data: any) => {
+          const user = data.user;
+          const payload: TikTokSocialPayload = {
+            uniqueId: String(user?.uniqueId || user?.userId || user?.nickname || 'espectador'),
+            nickname: user?.nickname || user?.uniqueId || 'Espectador',
+            timestamp: Date.now(),
+          };
+          this.emit(eventName, payload);
+        });
+      }
       await this.connector.connect();
       return { success: true, message: `Conectando à LIVE de @${cleanUser}...` };
     } catch (err: any) {
@@ -163,9 +199,7 @@ export class TikTokService extends EventEmitter {
       uniqueId: cleanUser.toLowerCase(),
       nickname: cleanUser,
       comment,
-      profilePictureUrl:
-        profilePictureUrl ||
-        `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(cleanUser)}&backgroundColor=0e0e10,1b1b1f`,
+      profilePictureUrl,
       timestamp: Date.now(),
     };
     this.emit('chat', payload);
@@ -185,9 +219,7 @@ export class TikTokService extends EventEmitter {
       giftId: giftId !== undefined ? String(giftId) : giftName.toLowerCase().replace(/\s+/g, '_'),
       giftName,
       repeatCount,
-      profilePictureUrl:
-        profilePictureUrl ||
-        `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(cleanUser)}&backgroundColor=0e0e10,1b1b1f`,
+      profilePictureUrl,
       timestamp: Date.now(),
     };
     this.emit('gift', payload);

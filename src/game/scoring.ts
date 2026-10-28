@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   maxVisibleLeaderboard: 5,
   maxRecentGiftsVisible: 4,
   giftNotificationDurationSeconds: 6,
+  likeNotificationThreshold: 10,
   points1st: 100,
   points2nd: 75,
   points3rd: 50,

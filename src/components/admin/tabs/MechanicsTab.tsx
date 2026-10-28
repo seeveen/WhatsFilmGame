@@ -1,25 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { Sliders, Save, CheckCircle, RotateCcw } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { RotateCcw, Save } from 'lucide-react';
 import { GameSettings } from '../../../../shared/types.ts';
 import { DEFAULT_SETTINGS } from '../../../game/scoring.ts';
+import {
+  Button,
+  Chip,
+  Notice,
+  NumberInput,
+  PageHeader,
+  Section,
+  SettingList,
+  SettingRow,
+  Spinner,
+  Switch,
+  useFeedback,
+} from '../../ui/index.ts';
+
+type NumericKey = 'roundsPerMatch' | 'roundDurationSeconds' | 'intermissionSeconds' | 'points1st' | 'points2nd' | 'points3rd' | 'pointsOthers';
+
+interface NumericField {
+  key: NumericKey;
+  label: string;
+  hint: string;
+  min: number;
+  max: number;
+  /** Valor usado quando o campo fica vazio/inválido — igual ao comportamento original. */
+  fallback: number;
+  unit: string;
+}
+
+const TIMING_FIELDS: NumericField[] = [
+  { key: 'roundsPerMatch', label: 'Rodadas por partida', hint: 'Quantos desafios compõem uma partida. Padrão: 10.', min: 1, max: 50, fallback: 10, unit: 'rod.' },
+  { key: 'roundDurationSeconds', label: 'Duração de cada rodada', hint: 'Tempo para adivinhar, antes de presentes acrescentarem segundos.', min: 10, max: 120, fallback: 30, unit: 's' },
+  { key: 'intermissionSeconds', label: 'Intervalo entre rodadas', hint: 'Tempo da tela de resultado antes da próxima rodada. Padrão: 5 segundos.', min: 3, max: 30, fallback: 5, unit: 's' },
+];
+
+const SCORING_FIELDS: NumericField[] = [
+  { key: 'points1st', label: '1º a acertar', hint: 'Pontos para quem acerta primeiro na rodada.', min: 10, max: 1000, fallback: 100, unit: 'pts' },
+  { key: 'points2nd', label: '2º a acertar', hint: 'Pontos para o segundo acerto.', min: 5, max: 500, fallback: 75, unit: 'pts' },
+  { key: 'points3rd', label: '3º a acertar', hint: 'Pontos para o terceiro acerto.', min: 5, max: 500, fallback: 50, unit: 'pts' },
+  { key: 'pointsOthers', label: 'Demais acertos válidos', hint: 'Pontos para os acertos seguintes, enquanto a rodada durar.', min: 0, max: 200, fallback: 25, unit: 'pts' },
+];
 
 export const MechanicsTab: React.FC = () => {
+  const { toast, confirm } = useFeedback();
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [saved, setSaved] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data: GameSettings) => {
         setSettings(data);
+        setSaved(data);
       })
-      .catch((err) => console.error('Failed to load settings:', err));
+      .catch((err) => {
+        console.error('Failed to load settings:', err);
+        setLoadError(true);
+      })
+      .finally(() => setLoaded(true));
   }, []);
+
+  const dirty = useMemo(() => JSON.stringify(settings) !== JSON.stringify(saved), [settings, saved]);
 
   const handleChange = (key: keyof GameSettings, val: any) => {
     setSettings((prev) => ({ ...prev, [key]: val }));
-    setSaveSuccess(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -32,216 +80,128 @@ export const MechanicsTab: React.FC = () => {
         body: JSON.stringify(settings),
       });
       if (res.ok) {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
+        setSaved(settings);
+        setLoadError(false);
+        toast('success', 'As novas regras valem a partir da próxima partida ou rodada.', 'Mecânicas salvas');
+      } else {
+        toast('error', 'O servidor recusou as configurações. Confira os valores e tente de novo.', 'Não foi possível salvar');
       }
-    } catch (e: any) {
-      alert(`Falha ao salvar: ${e.message}`);
+    } catch (err: any) {
+      toast('error', err.message, 'Falha ao salvar');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleResetDefaults = () => {
-    if (confirm('Restaurar todas as mecânicas para o padrão oficial?')) {
-      setSettings(DEFAULT_SETTINGS);
-      setSaveSuccess(false);
-    }
+  const handleResetDefaults = async () => {
+    const ok = await confirm({
+      title: 'Restaurar o padrão oficial?',
+      message: 'Todas as mecânicas voltam aos valores padrão. Nada é gravado até você clicar em “Salvar mecânicas”.',
+      confirmLabel: 'Restaurar padrões',
+      tone: 'primary',
+    });
+    if (ok) setSettings(DEFAULT_SETTINGS);
   };
 
+  const renderNumber = (field: NumericField) => (
+    <SettingRow key={field.key} label={field.label} hint={field.hint} htmlFor={`mech-${field.key}`}>
+      <NumberInput
+        id={`mech-${field.key}`}
+        min={field.min}
+        max={field.max}
+        unit={field.unit}
+        value={settings[field.key]}
+        onChange={(e) => {
+          const value = Number.parseInt(e.currentTarget.value, 10);
+          handleChange(field.key, Number.isNaN(value) ? field.fallback : value);
+        }}
+      />
+    </SettingRow>
+  );
+
   return (
-    <form onSubmit={handleSave} className="space-y-6 text-[#F7F2F4]">
-      {/* Top Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-6 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-xl">
-        <div>
-          <h2 className="text-xl font-extrabold text-white font-display flex items-center gap-2.5">
-            <Sliders className="w-6 h-6 text-[#C5163D]" />
-            Mecânicas da Partida e Rodadas
-          </h2>
-          <p className="text-xs text-[#B7A8AE] mt-1">
-            Configure as regras de tempo, número de rodadas, pontuação e loop contínuo
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleResetDefaults}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#21171B] border border-[#39272E] text-xs font-semibold text-[#B7A8AE] hover:text-white cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Restaurar Padrões
-          </button>
-
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#C5163D] hover:bg-[#E5254D] text-white text-xs font-bold transition-all shadow-lg shadow-[#C5163D]/25 cursor-pointer disabled:opacity-50"
-          >
-            {saveSuccess ? (
-              <>
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-                Salvo com Sucesso!
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Salvar Mecânicas
-              </>
+    <form className="page" onSubmit={handleSave} noValidate>
+      <PageHeader
+        eyebrow="Partida"
+        title="Mecânicas"
+        description="Regras de tempo, número de rodadas, pontuação e repetição das partidas."
+        actions={
+          <>
+            {dirty && (
+              <Chip tone="warn" dot="warn">
+                Alterações não salvas
+              </Chip>
             )}
-          </button>
+            <Button type="button" icon={<RotateCcw />} onClick={handleResetDefaults}>
+              Restaurar padrões
+            </Button>
+            <Button type="submit" variant="primary" icon={<Save />} loading={isSaving} disabled={!loaded}>
+              Salvar mecânicas
+            </Button>
+          </>
+        }
+      />
+
+      {loadError && (
+        <Notice tone="warn" onDismiss={() => setLoadError(false)}>
+          Não foi possível carregar as configurações atuais do servidor. Os valores abaixo são os padrões; salvar substitui o que
+          estiver gravado.
+        </Notice>
+      )}
+
+      {!loaded ? (
+        <div className="mech-loading">
+          <Spinner />
         </div>
-      </div>
+      ) : (
+        <>
+          <Section title="Rodadas e tempo" description="Ritmo da partida: quantas rodadas, quanto dura cada uma e a pausa entre elas.">
+            <SettingList>{TIMING_FIELDS.map(renderNumber)}</SettingList>
+          </Section>
 
-      {/* Grid of Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Section 1: Rounds e Duração */}
-        <div className="p-6 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-xl space-y-4">
-          <h3 className="font-extrabold text-base text-white font-display border-b border-[#39272E] pb-3">
-            Rounds & Tempo
-          </h3>
-
-          <div className="space-y-4 text-xs">
-            <div>
-              <label className="block text-[#B7A8AE] font-semibold mb-1">
-                Rounds por Partida (Padrão: 10)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={settings.roundsPerMatch}
-                onChange={(e) => handleChange('roundsPerMatch', parseInt(e.target.value, 10) || 10)}
-                className="w-full px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-white font-mono-num font-bold text-sm focus:outline-none focus:border-[#C5163D]"
-              />
+          <Section title="Pontuação por acerto" description="Quem acerta primeiro leva mais. Presentes de multiplicador dobram os pontos do próximo acerto.">
+            <SettingList>{SCORING_FIELDS.map(renderNumber)}</SettingList>
+            <div className="mech-ladder" aria-hidden="true">
+              {SCORING_FIELDS.map((field, index) => (
+                <div key={field.key} className="mech-ladder__step">
+                  <span className="mech-ladder__bar" style={{ height: `${Math.max(6, (Number(settings[field.key]) / Math.max(1, Number(settings.points1st))) * 100)}%` }} />
+                  <span className="num mech-ladder__pts">{settings[field.key]}</span>
+                  <span className="mech-ladder__lbl">{['1º', '2º', '3º', 'Demais'][index]}</span>
+                </div>
+              ))}
             </div>
+          </Section>
 
-            <div>
-              <label className="block text-[#B7A8AE] font-semibold mb-1">
-                Duração de cada Round (segundos)
-              </label>
-              <input
-                type="number"
-                min={10}
-                max={120}
-                value={settings.roundDurationSeconds}
-                onChange={(e) => handleChange('roundDurationSeconds', parseInt(e.target.value, 10) || 30)}
-                className="w-full px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-white font-mono-num font-bold text-sm focus:outline-none focus:border-[#C5163D]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#B7A8AE] font-semibold mb-1">
-                Intervalo entre Rounds (Padrão: 5 segundos)
-              </label>
-              <input
-                type="number"
-                min={3}
-                max={30}
-                value={settings.intermissionSeconds}
-                onChange={(e) => handleChange('intermissionSeconds', parseInt(e.target.value, 10) || 5)}
-                className="w-full px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-white font-mono-num font-bold text-sm focus:outline-none focus:border-[#C5163D]"
-              />
-            </div>
-
-            <div className="pt-2">
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
+          <Section title="Partidas" description="O que acontece quando a partida termina e como os desafios são sorteados.">
+            <SettingList>
+              <SettingRow
+                label="Loop contínuo de partidas"
+                hint="Inicia uma nova partida automaticamente 10 segundos após o pódio final."
+                htmlFor="mech-autoLoop"
+              >
+                <Switch
+                  id="mech-autoLoop"
                   checked={settings.autoLoopMatches}
-                  onChange={(e) => handleChange('autoLoopMatches', e.target.checked)}
-                  className="rounded text-[#C5163D] focus:ring-[#C5163D]"
+                  onChange={(next) => handleChange('autoLoopMatches', next)}
+                  label={settings.autoLoopMatches ? 'Ligado' : 'Desligado'}
                 />
-                <span className="font-semibold text-white">
-                  Loop Contínuo de Partidas
-                </span>
-              </label>
-              <p className="text-[11px] text-zinc-500 ml-6 mt-1">
-                Inicia uma nova partida automaticamente 10 segundos após a exibição do pódio final
-              </p>
-            </div>
-
-            <div className="pt-1">
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
+              </SettingRow>
+              <SettingRow
+                label="Não repetir desafio na mesma partida"
+                hint="Cada filme aparece no máximo uma vez por partida."
+                htmlFor="mech-noRepeat"
+              >
+                <Switch
+                  id="mech-noRepeat"
                   checked={settings.preventRepeatInMatch}
-                  onChange={(e) => handleChange('preventRepeatInMatch', e.target.checked)}
-                  className="rounded text-[#C5163D] focus:ring-[#C5163D]"
+                  onChange={(next) => handleChange('preventRepeatInMatch', next)}
+                  label={settings.preventRepeatInMatch ? 'Ligado' : 'Desligado'}
                 />
-                <span className="font-semibold text-white">
-                  Não Repetir Desafio na Mesma Partida
-                </span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2: Pontuação por Posição */}
-        <div className="p-6 rounded-lg bg-[#1C171A] border border-[#39272E] shadow-xl space-y-4">
-          <h3 className="font-extrabold text-base text-white font-display border-b border-[#39272E] pb-3">
-            Pontuação por Acerto
-          </h3>
-
-          <div className="space-y-4 text-xs">
-            <div>
-              <label className="block text-[#B7A8AE] font-semibold mb-1">
-                1º Lugar no Round (Pontos)
-              </label>
-              <input
-                type="number"
-                min={10}
-                max={1000}
-                value={settings.points1st}
-                onChange={(e) => handleChange('points1st', parseInt(e.target.value, 10) || 100)}
-                className="w-full px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-white font-mono-num font-bold text-sm focus:outline-none focus:border-[#C5163D]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#B7A8AE] font-semibold mb-1">
-                2º Lugar no Round (Pontos)
-              </label>
-              <input
-                type="number"
-                min={5}
-                max={500}
-                value={settings.points2nd}
-                onChange={(e) => handleChange('points2nd', parseInt(e.target.value, 10) || 75)}
-                className="w-full px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-white font-mono-num font-bold text-sm focus:outline-none focus:border-[#C5163D]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#B7A8AE] font-semibold mb-1">
-                3º Lugar no Round (Pontos)
-              </label>
-              <input
-                type="number"
-                min={5}
-                max={500}
-                value={settings.points3rd}
-                onChange={(e) => handleChange('points3rd', parseInt(e.target.value, 10) || 50)}
-                className="w-full px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-white font-mono-num font-bold text-sm focus:outline-none focus:border-[#C5163D]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#B7A8AE] font-semibold mb-1">
-                Demais Acertos Válidos (Pontos)
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={200}
-                value={settings.pointsOthers}
-                onChange={(e) => handleChange('pointsOthers', parseInt(e.target.value, 10) || 25)}
-                className="w-full px-3.5 py-2.5 rounded-md bg-[#110F11] border border-[#39272E] text-white font-mono-num font-bold text-sm focus:outline-none focus:border-[#C5163D]"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+              </SettingRow>
+            </SettingList>
+          </Section>
+        </>
+      )}
     </form>
   );
 };

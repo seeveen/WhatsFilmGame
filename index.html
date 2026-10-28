@@ -3,20 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#110F11" />
     <title>QUAL É O FILME? — TikTok LIVE</title>
     <meta name="description" content="Jogo interativo de adivinhação de filmes para transmissões TikTok LIVE, com ranking em tempo real e efeitos de presentes." />
     <meta property="og:title" content="QUAL É O FILME? — TikTok LIVE" />
     <meta property="og:description" content="Jogo interativo de adivinhação de filmes para transmissões TikTok LIVE, com ranking em tempo real e efeitos de presentes." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Fontes locais (Sora, Inter, JetBrains Mono): nenhum pedido à internet em tempo de execução. -->
+    <link rel="preload" href="/fonts/Sora-latin-wght.woff" as="font" type="font/woff" crossorigin />
+    <link rel="preload" href="/fonts/Inter-latin-wght.woff" as="font" type="font/woff" crossorigin />
+    <link rel="preload" href="/fonts/JetBrainsMono-latin-wght.woff" as="font" type="font/woff" crossorigin />
   </head>
-  <body class="bg-[#110F11] text-[#F7F2F4] font-['Inter',sans-serif] antialiased overflow-x-hidden selection:bg-[#C5163D] selection:text-white">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

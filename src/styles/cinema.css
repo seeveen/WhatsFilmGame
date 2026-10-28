@@ -1,0 +1,82 @@
+/*
+ * Cinema motifs — the small, repeatable vocabulary that makes the UI recognisably ours.
+ * Used sparingly and always at low contrast: they frame content, they never compete with it.
+ *
+ *   .frame      viewfinder corner marks (4 L-shaped brackets inside the box)
+ *   .sprockets  film perforation row (decorative strip; holes are drawn with a mask)
+ *   .playmark   the small ▶ used as bullet / active indicator
+ *   .leader     dotted leader between a name and a figure (end-credits style)
+ */
+
+@layer components {
+  /* ── Viewfinder corner marks ──────────────────────────────── */
+  .frame {
+    position: relative;
+  }
+  .frame::before {
+    content: '';
+    position: absolute;
+    inset: var(--fm-inset, 10px);
+    z-index: 1;
+    pointer-events: none;
+    --c: var(--fm-color, var(--fg-3));
+    --t: var(--fm-thick, 1.5px);
+    --l: var(--fm-len, 14px);
+    background:
+      linear-gradient(var(--c), var(--c)) top left / var(--l) var(--t) no-repeat,
+      linear-gradient(var(--c), var(--c)) top left / var(--t) var(--l) no-repeat,
+      linear-gradient(var(--c), var(--c)) top right / var(--l) var(--t) no-repeat,
+      linear-gradient(var(--c), var(--c)) top right / var(--t) var(--l) no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom left / var(--l) var(--t) no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom left / var(--t) var(--l) no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom right / var(--l) var(--t) no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom right / var(--t) var(--l) no-repeat;
+    opacity: var(--fm-opacity, 0.55);
+  }
+
+  /* ── Film perforations ────────────────────────────────────── */
+  /* Colour of the holes = background-color; the mask cuts the strip into rounded rectangles. */
+  .sprockets {
+    flex: none;
+    width: 100%;
+    height: var(--sp-h, 12px);
+    background-color: var(--sp-hole, var(--line-soft));
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='12' viewBox='0 0 20 12'%3E%3Crect x='5.5' y='2.5' width='9' height='7' rx='2' fill='%23000'/%3E%3C/svg%3E") center / auto 100% repeat-x;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='12' viewBox='0 0 20 12'%3E%3Crect x='5.5' y='2.5' width='9' height='7' rx='2' fill='%23000'/%3E%3C/svg%3E") center / auto 100% repeat-x;
+  }
+
+  /* ── ▶ marker ─────────────────────────────────────────────── */
+  .playmark {
+    display: inline-block;
+    flex: none;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0.32em 0 0.32em 0.55em;
+    border-color: transparent transparent transparent var(--pm-color, var(--brand));
+  }
+
+  /* ── Small mono eyebrow label, optionally led by ▶ ────────── */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--fg-3);
+    font: 600 11.5px/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .eyebrow--brand {
+    color: var(--red-text);
+  }
+
+  /* ── End-credits dotted leader: <name> ····· <figure> ─────── */
+  .leader {
+    flex: 1 1 auto;
+    min-width: 1em;
+    align-self: flex-end;
+    margin-bottom: 0.32em;
+    border-bottom: 1.5px dotted var(--ld-color, var(--line));
+    opacity: 0.9;
+  }
+}

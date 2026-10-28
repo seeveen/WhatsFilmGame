@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { GameStateDTO } from '../../../shared/types.ts';
+import React, { useEffect, useRef, useState } from 'react';
+import { GameStateDTO, TikTokLogLine } from '../../../shared/types.ts';
+import { FeedbackProvider } from '../ui/index.ts';
 import { AdminSidebar, AdminTab } from './AdminSidebar.tsx';
+import { AdminStatusBar } from './AdminStatusBar.tsx';
 import { OverviewTab } from './tabs/OverviewTab.tsx';
 import { LibraryTab } from './tabs/LibraryTab.tsx';
 import { MechanicsTab } from './tabs/MechanicsTab.tsx';
@@ -11,34 +13,37 @@ import { HistoryTab } from './tabs/HistoryTab.tsx';
 interface AdminPanelProps {
   gameState: GameStateDTO;
   onReturnToStream: () => void;
+  tiktokLogs: TikTokLogLine[];
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({
-  gameState,
-  onReturnToStream,
-}) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, onReturnToStream, tiktokLogs }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Cada seção abre no topo, como uma página nova.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [activeTab]);
 
   return (
-    <div className="w-full min-h-screen bg-[#110F11] flex flex-col lg:flex-row text-[#F7F2F4] font-body">
-      {/* Sidebar navigation */}
-      <AdminSidebar
-        currentTab={activeTab}
-        onSelectTab={setActiveTab}
-        onReturnToStream={onReturnToStream}
-      />
+    <FeedbackProvider>
+      <div className="admin">
+        <AdminSidebar currentTab={activeTab} onSelectTab={setActiveTab} onReturnToStream={onReturnToStream} />
 
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 min-h-0 lg:h-screen overflow-y-auto p-4 sm:p-6 lg:p-10 bg-[#110F11]">
-        <div className="max-w-7xl mx-auto">
-          {activeTab === 'overview' && <OverviewTab gameState={gameState} />}
-          {activeTab === 'library' && <LibraryTab />}
-          {activeTab === 'mechanics' && <MechanicsTab />}
-          {activeTab === 'gifts' && <GiftsTab />}
-          {activeTab === 'tiktok' && <TikTokTab gameState={gameState} />}
-          {activeTab === 'history' && <HistoryTab />}
+        <div className="admin-body">
+          <AdminStatusBar gameState={gameState} />
+          <main className="admin-main" ref={mainRef}>
+            <div className="admin-content">
+              {activeTab === 'overview' && <OverviewTab gameState={gameState} />}
+              {activeTab === 'library' && <LibraryTab />}
+              {activeTab === 'mechanics' && <MechanicsTab />}
+              {activeTab === 'gifts' && <GiftsTab />}
+              {activeTab === 'tiktok' && <TikTokTab gameState={gameState} logs={tiktokLogs} />}
+              {activeTab === 'history' && <HistoryTab />}
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </div>
+    </FeedbackProvider>
   );
 };
